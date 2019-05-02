@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Vocabulary Registry database design</title>
+  <style>
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <style>
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(title);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="../css/pandoc.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Vocabulary Registry database design</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#see-also">See also</a></li>
+<li><a href="#design-principles">Design principles</a><ul>
+<li><a href="#general-principles">General principles</a></li>
+<li><a href="#design-principles-for-json-flavoured-columns">Design principles for JSON-flavoured columns</a></li>
+<li><a href="#design-principles-for-access-points-and-version-artefacts">Design principles for access points and version artefacts</a></li>
+</ul></li>
+<li><a href="#tables-for-database-maintenance">Tables for database maintenance</a><ul>
+<li><a href="#table-databasechangelog">Table: DATABASECHANGELOG</a></li>
+<li><a href="#table-databasechangeloglock">Table: DATABASECHANGELOGLOCK</a></li>
+</ul></li>
+<li><a href="#tables-just-for-ids">Tables just for ids</a><ul>
+<li><a href="#table-vocabulary_ids">Table: vocabulary_ids</a></li>
+<li><a href="#table-version_ids">Table: version_ids</a></li>
+<li><a href="#table-version_artefact_ids">Table: version_artefact_ids</a></li>
+<li><a href="#table-access_point_ids">Table: access_point_ids</a></li>
+<li><a href="#table-related_entity_ids">Table: related_entity_ids</a></li>
+<li><a href="#table-related_entity_identifier_ids">Table: related_entity_identifier_ids</a></li>
+<li><a href="#table-subscriber_ids">Table: subscriber_ids</a></li>
+<li><a href="#table-subscriber_email_address_ids">Table: subscriber_email_address_ids</a></li>
+<li><a href="#table-subscription_ids">Table: subscription_ids</a></li>
+</ul></li>
+<li><a href="#the-main-tables">The main tables</a><ul>
+<li><a href="#table-vocabularies">Table: vocabularies</a></li>
+<li><a href="#table-versions">Table: versions</a></li>
+<li><a href="#table-version_artefacts">Table: version_artefacts</a></li>
+<li><a href="#table-access_points">Table: access_points</a></li>
+<li><a href="#table-related_entities">Table: related_entities</a></li>
+<li><a href="#table-related_entity_identifiers">Table: related_entity_identifiers</a></li>
+<li><a href="#table-vocabulary_related_entities">Table: vocabulary_related_entities</a></li>
+<li><a href="#table-vocabulary_related_vocabularies">Table: vocabulary_related_vocabularies</a></li>
+<li><a href="#table-tasks">Table: tasks</a></li>
+<li><a href="#table-poolparty_servers">Table: poolparty_servers</a></li>
+<li><a href="#table-registry_events">Table: registry_events</a></li>
+<li><a href="#table-subject_resolver_sources">Table: subject_resolver_sources</a></li>
+<li><a href="#table-subject_resolver">Table: subject_resolver</a></li>
+<li><a href="#table-uploads">Table: uploads</a></li>
+</ul></li>
+<li><a href="#resource-iri-resolution-service">Resource IRI resolution service</a><ul>
+<li><a href="#table-resource_owner_hosts">Table: resource_owner_hosts</a></li>
+<li><a href="#table-resource_map">Table: resource_map</a></li>
+</ul></li>
+<li><a href="#subscriptions-and-notifications">Subscriptions and notifications</a><ul>
+<li><a href="#table-subscribers">Table: subscribers</a></li>
+<li><a href="#table-subscriber_email_addresses">Table: subscriber_email_addresses</a></li>
+<li><a href="#table-subscriptions">Table: subscriptions</a></li>
+<li><a href="#table-owners">Table: owners</a></li>
+</ul></li>
+<li><a href="#integrity-constraints">Integrity constraints</a></li>
+</ul>
+</nav>
+<h1 id="see-also">See also</h1>
+<ul>
+<li>There are some nice UML diagrams that provide a logical view of the main database entities at: <a href="Vocabulary_Registry_design_diagrams">Vocabulary Registry design diagrams</a>.</li>
+</ul>
+<h1 id="design-principles">Design principles</h1>
+<h2 id="general-principles">General principles</h2>
+<ul>
+<li>All columns are to have the property NOT NULL. Therefore, only <em>required</em> attributes can be columns; <em>optional</em> attributes are represented in the various “data” fields (represented as JSON).</li>
+<li>The <code>start_date</code> and <code>end_date</code> columns are explained in <a href="Vocabulary_database_temporal_data">Vocabulary database temporal data</a>.</li>
+<li>Within each main table, there are typically two id columns; the first, called <code>id</code>, is a surrogate key. The second is the “real” id. For example, the vocabularies table has <code>id</code> and <code>vocabulary_id</code>.</li>
+<li>Foreign keys are to be used, where possible. Because of the <code>start_date</code> and <code>end_date</code> columns, that means that “real” ids are typically not unique in the main tables. So we introduce separate “*_ids” tables just to store ids. (If in future, we use a database that supports SQL:2011’s temporal features, it might be possible to implement foreign keys directly between the main tables.)</li>
+<li>Owners are to be role identifiers, not role names/abbreviations. When performing a migration, check that the values of the owner fields are indeed IDs, not anything else.</li>
+<li>The various <code>modified_by</code> columns are to have values that are role identifiers. But they can also be “system”/internal roles. For now, we use a special value <code>SYSTEM</code> where we don’t otherwise have a role identifier to use. That means: for data migrated from the old database, and for the tables used for the subscription/notification subsystem.</li>
+<li>The ordering of the columns in each table follows a similar pattern. For a table with all possible options, that would be: <code>id</code> (surrogate key), <code>start_date</code>, <code>end_date</code>, “real” id, “real” ids for keys to other tables, <code>modified_by</code>, <code>status</code> (table-specific enumerated type), <code>type</code> (table-specific enumerated type), any other columns, <code>data</code> (JSON).</li>
+<li>Where a column stores values of an enumerated type, the values of the type are in all uppercase, with words separated by underscores.
+<ul>
+<li>This is a change from the original database, and a change to most instances of usual practice. (However, it is not the first time we have done this; e.g., types of roles, and many role names.)</li>
+<li>This change is driven by the default behaviour of JPA when it serializes instances of enumerated types.</li>
+<li>It has the advantage that instances of enumerated types will now stand out very clearly when working directly with the database, e.g., when reading database dumps.</li>
+</ul></li>
+</ul>
+<h2 id="design-principles-for-json-flavoured-columns">Design principles for JSON-flavoured columns</h2>
+<ul>
+<li>In JSON-flavoured <code>data</code> fields, for a sub-field that can have an array value, don’t store an empty array if there are no values to be recorded. For example, for a vocabulary, if there are no top concepts, don’t include <code>"top_concepts":[]</code>. This is a debatable point … but let’s go with this for now and see if there are any consequences. (This is the behaviour of Jackson’s serialization of Lists that are fields of instances of xjc-generated classes, when the Jackson ObjectMapper is configured with the JaxbAnnotationModule, and serialization inclusion is set to Include.NON_NULL.)</li>
+<li>Where the path to a file in the file system is being stored in a JSON-flavoured <code>data</code> column, it will be stored with key <code>"path"</code>.</li>
+<li>Where a URL is being stored in a JSON-flavoured <code>data</code> column, it will be stored with key <code>"url"</code>. Where the value is to be understood as a prefix, to which something must be appended, it will be stored with key <code>"url-prefix"</code>.</li>
+<li>Where the IRI of a resource is being stored in a JSON-flavoured <code>data</code> column, it will be stored with key <code>"iri"</code>.</li>
+<li>On the implementation of serialization of data into JSON, please note the section “A note about the order of keys in JSON data” at the page <a href="Vocabulary_Registry_mappers_between_database_and_schema_objects">Vocabulary Registry mappers between database and schema objects</a>.</li>
+</ul>
+<h2 id="design-principles-for-access-points-and-version-artefacts">Design principles for access points and version artefacts</h2>
+<p>It’s important to keep in mind what access points and version artefacts <em>are</em>.</p>
+<ul>
+<li>An access point is something that is visible on the view page of the portal. For each access point, there will be at least one link on the view page. (For each access point of type sesameDownload, there will be one link for each supported RDF format.)
+<ul>
+<li>For some types of access point, the user may directly request the creation of an access point by specifying when adding/updating a vocabulary. These have source=user.</li>
+<li>For some types of access point, the system is responsible for creation of some instances. These have source=system.</li>
+</ul></li>
+<li>A version artefact is something that “belongs” to the version, but which may or may not be directly “visible” in the portal. (For now) the user doesn’t explicitly “ask” for the creation of these: there are <em>only</em> “system”-sourced version artefacts.</li>
+</ul>
+<p>The distinction between user-supplied and system-controlled/generated stuff must be worked out in the portal and in the registry API.</p>
+<p>In the portal CMS: user-supplied stuff is visible in the CMS and the user can edit/delete it. System-supplied stuff may not be visible in the CMS, but if it is, the user can not edit/delete it directly. E.g., the existence of a system-generated apiSparql access point is controlled by the “Import” checkbox, <em>not</em> by the presence/absence of that specific apiSparql endpoint in the CMS.</p>
+<p>The registry API may include system-generated stuff in responses. Indeed, it does include it when fetching the “full” vocabulary data so that the view page can display it.</p>
+<p>When sending data to the registry API, don’t send system-generated stuff; or, at least, don’t need to send back system-generated stuff. Whatever happens, the registry needs to “ignore” system-generated stuff <em>sent</em> to it.</p>
+<h1 id="tables-for-database-maintenance">Tables for database maintenance</h1>
+<p>We use Liquibase to do all maintenance of the Registry database schema. Changes to the database schema of a particular instance of the Registry database are applied <em>only</em> using Liquibase, never by running DDL commands “manually”. There is an Ant target (defined in <code>build.xml</code>) for applying schema changes; see <a href="Vocabulary_Registry_build_script_and_targets">Vocabulary Registry build script and targets</a>.</p>
+<p>There are two tables used by Liquibase to maintain the database schema within a database deployment. In general, you almost never need to pay attention to the contents of these tables; certainly, you should <em>never</em> make manual changes to the content of these tables.</p>
+<p>NB: as the test system uses JPA annotations to drive the creation of test databases, these tables are not visible during text execution.</p>
+<h2 id="table-databasechangelog">Table: DATABASECHANGELOG</h2>
+<p>This table has a row for every database schema operation applied to the database. For example, there is a row for every table creation, and for every index creation. There are also rows for “tags” which are helpful in case a rollback is required to return to an earlier version of the database schema (e.g., during development).</p>
+<h2 id="table-databasechangeloglock">Table: DATABASECHANGELOGLOCK</h2>
+<p>This one-row table is used by Liquibase to implement a lock on changes to the database schema, i.e., to ensure that there is only one instance of Liquibase operating on the database schema at a time.</p>
+<h1 id="tables-just-for-ids">Tables just for ids</h1>
+<p>These are tables that contain only ids. Why?</p>
+<ul>
+<li>To get values that auto-increment. (MySQL does not have sequences.)</li>
+<li>These values can then be used as foreign keys in other tables.</li>
+</ul>
+<p>So, when creating a new vocabulary, first add a row to vocabulary_ids. Then use the id of the resulting row as the vocabulary_id to insert into a new row in the vocabularies table.</p>
+<h2 id="table-vocabulary_ids">Table: vocabulary_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">2</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-version_ids">Table: version_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">5</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-version_artefact_ids">Table: version_artefact_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">5</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-access_point_ids">Table: access_point_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">3</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-related_entity_ids">Table: related_entity_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-related_entity_identifier_ids">Table: related_entity_identifier_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-subscriber_ids">Table: subscriber_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-subscriber_email_address_ids">Table: subscriber_email_address_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7</td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-subscription_ids">Table: subscription_ids</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 48%" />
+<col style="width: 10%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">7</td>
+</tr>
+</tbody>
+</table>
+<h1 id="the-main-tables">The main tables</h1>
+<h2 id="table-vocabularies">Table: vocabularies</h2>
+<table>
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 9%" />
+<col style="width: 14%" />
+<col style="width: 47%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">17</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:45.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references vocabulary_ids(id)</td>
+<td style="text-align: left;">The “real” vocabulary id</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">status</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: CURRENT, DEPRECATED, DRAFT</td>
+<td style="text-align: left;">CURRENT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">slug</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Would be nice to use Lucene/Solr libraries to generate this</td>
+<td style="text-align: left;">my-vocab</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">owner</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Role ID taken from dbs_roles.roles(role_id); either an organisational role or an individual user</td>
+<td style="text-align: left;">ANDS</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><p>JSON to store everything else:</p>
+<ul>
+<li>title</li>
+<li>acronym</li>
+<li>description</li>
+<li>note</li>
+<li>revision cycle</li>
+<li>creation date (the user-entered one)</li>
+<li>language</li>
+<li>primary language (used to select prefLabels for the browse tree)</li>
+<li>other languages (i.e., languages other than the primary language)</li>
+<li>subjects</li>
+<li>top concepts: oops, move this into versions?</li>
+<li>licencing</li>
+<li>PoolParty project:
+<ul>
+<li>PoolParty server: id of the entry in the <code>poolparty_servers</code> table</li>
+<li>Project ID</li>
+</ul></li>
+<li>For draft records only, and for analytics only: created date, modified date
+<ul>
+<li>Draft records have special, fixed start_date/end_date values, so record creation/modification timestamps can’t be stored there. So instead, store them here. This may be useful for analytics, i.e., when did someone create this draft record?</li>
+</ul></li>
+</ul></td>
+<td style="text-align: left;">{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>id (primary key)</li>
+<li>ix_vocabularies_vocabulary_id_end_date: (vocabulary_id, end_date)</li>
+<li>ix_vocabularies_slug_end_date: (slug, end_date)</li>
+</ul>
+<h2 id="table-versions">Table: versions</h2>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 10%" />
+<col style="width: 15%" />
+<col style="width: 43%" />
+<col style="width: 19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:46.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">version_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references version_ids(id)</td>
+<td style="text-align: left;">The “real” version id</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references vocabulary_ids(id)</td>
+<td style="text-align: left;">The vocabulary id. There must be an entry in the vocabularies table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">status</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: CURRENT, SUPERSEDED</td>
+<td style="text-align: left;">CURRENT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">slug</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">release_date</td>
+<td style="text-align: left;">varchar(30)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">This would “normally” have gone into data, but we store it here at the top level, in order to support queries that do something like “ORDER BY release_date_order DESC” to sort versions by release date. Stored as a string to allow for partial dates (e.g., “2015” and “2015-10”). NB: a partial date such as “2015” will sort as though it were “2015-01-01”, which is nice/good enough. Allow 30 characters for now; this is enough to support date/time/milliseconds.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><p>JSON to store everything else:</p>
+<ul>
+<li>title</li>
+<li>note</li>
+<li>(release date: no, store at top-level, q.v.)</li>
+<li>do_poolparty_harvest (flag to specify harvest from the PoolParty project; only allowed to be true if the vocabulary has specified a PoolParty project!)</li>
+<li>do_import (flag to cause creation of Sesame repository)</li>
+<li>do_publish (flag to cause creation of SISSVoc endpoints)</li>
+<li>For draft records only, and for analytics only: created date, modified date
+<ul>
+<li>Draft records have special, fixed start_date/end_date values, so record creation/modification timestamps can’t be stored there. So instead, store them here. This may be useful for analytics, i.e., when did someone create this draft record?</li>
+</ul></li>
+</ul></td>
+<td style="text-align: left;">{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>version_id</li>
+<li>(version_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-version_artefacts">Table: version_artefacts</h2>
+<p>See also the child page <a href="Vocabulary_database_new_design_version_artefacts">Vocabulary database new design: version_artefacts</a> for details about the various types of version artefact.</p>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 8%" />
+<col style="width: 16%" />
+<col style="width: 43%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Type</th>
+<th>Extra</th>
+<th>Notes</th>
+<th>Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>id</td>
+<td>integer</td>
+<td>auto_increment</td>
+<td>Surrogate key</td>
+<td>18</td>
+</tr>
+<tr class="even">
+<td>start_date</td>
+<td>datetime</td>
+<td></td>
+<td>Value is in the UTC timezone</td>
+<td>2016-08-15 13:50:46.123468</td>
+</tr>
+<tr class="odd">
+<td>end_date</td>
+<td>datetime</td>
+<td></td>
+<td>Value is in the UTC timezone</td>
+<td>9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td>version_artefact_id</td>
+<td>integer</td>
+<td>foreign key references version_artefact_ids(id)</td>
+<td></td>
+<td>4</td>
+</tr>
+<tr class="odd">
+<td>version_id</td>
+<td>integer</td>
+<td>foreign key references version_ids(id)</td>
+<td>The “real” version id. There must be an entry in the versions table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td>modified_by</td>
+<td>varchar(255)</td>
+<td></td>
+<td>The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td>rwalker</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>status</td>
+<td>varchar(45)</td>
+<td></td>
+<td>Enumerated type: CURRENT, PENDING</td>
+<td>CURRENT</td>
+</tr>
+<tr class="odd">
+<td>type</td>
+<td>varchar(45)</td>
+<td></td>
+<td>Enumerated type: FILE, RDF_FROM_URL, SPARQL_ENDPOINT, CONCEPT_LIST, CONCEPT_TREE, …</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>data</td>
+<td>text</td>
+<td></td>
+<td><p>JSON to store everything else:</p>
+<ul>
+<li>for FILE: filename</li>
+<li>for RDF_FROM_URL: rdf_type (values are MIME types or similar)</li>
+<li>for FILE, RDF_FROM_URL, etc.: do_import (flag to indicate that this should be imported into Sesame)</li>
+<li>for CONCEPT_TREE: filename, flags to indicate whether this has cycles, whether it has polyhierarchies (used to determine whether to show explanatory notes when displaying to the user)</li>
+</ul></td>
+<td>{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>version_artefact_id</li>
+<li>(version_artefact_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-access_points">Table: access_points</h2>
+<p>See also the child page <a href="Vocabulary_database_new_design_access_points">Vocabulary database new design: access_points</a> for details about the various types of access point.</p>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 8%" />
+<col style="width: 14%" />
+<col style="width: 47%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">access_point_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references access_point_ids(id)</td>
+<td style="text-align: left;">The “real” access point id</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">version_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references version_ids(id)</td>
+<td style="text-align: left;">The version id. There must be an entry in the versions table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">type</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: FILE, SESAME_DOWNLOAD, …</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">source</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: SYSTEM or USER</td>
+<td style="text-align: left;">SYSTEM</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">JSON to store everything else for the portal and toolkit; NB: this combines the old portal_data and toolkit_data into one; the various APIs will split this out as required</td>
+<td style="text-align: left;">{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>access_point_id</li>
+<li>(access_point_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-related_entities">Table: related_entities</h2>
+<p>Related entities are given “first class” status, i.e., unlike in the original database, they are not represented directly within the JSON data of a vocabulary. This is so that you can edit the details of a related entity, and those details will then apply to all vocabularies that are related to the related entity.</p>
+<p>Related vocabularies that are <em>in this database</em> are represented in the separate table vocabulary_related_vocabularies.</p>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 8%" />
+<col style="width: 16%" />
+<col style="width: 44%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">related_entity_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references related_entity_ids(id)</td>
+<td style="text-align: left;">The “real” related entity id</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">owner</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Copied from the owner of the vocabulary that first creates/uses this related entity?</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">type</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: PARTY, SERVICE, VOCABULARY (for links to vocabularies <em>not</em> stored in this database)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">title</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">All related entities have a title, so store as its own column</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Everything else except identifiers: email, phone, URL, … For identifiers, see the related_entity_identifiers table.</td>
+<td style="text-align: left;">{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>related_entity_id</li>
+<li>(related_entity_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-related_entity_identifiers">Table: related_entity_identifiers</h2>
+<p>This table has been split off from related_entities so that we can do things like, “find all vocabularies that have an association with Handle XYZ”.</p>
+<table>
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 8%" />
+<col style="width: 22%" />
+<col style="width: 31%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">related_entity_identifier_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references related_entity_identifier_ids(id)</td>
+<td style="text-align: left;">The “real” related entity identifier id</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">related_entity_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references related_entity_ids(id)</td>
+<td style="text-align: left;">There must be an entry in the related_entities table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">identifier_type</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: LOCAL (catch-all for anything the user wants to enter as free text), HANDLE, ORCID, …</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">identifier_value</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The value of the identifier</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>related_entity_id</li>
+<li>(related_entity_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-vocabulary_related_entities">Table: vocabulary_related_entities</h2>
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 9%" />
+<col style="width: 16%" />
+<col style="width: 41%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references vocabulary_ids(id)</td>
+<td style="text-align: left;">There must be an entry in the vocabularies table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">related_entity_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references related_entity_ids(id)</td>
+<td style="text-align: left;">There must be an entry in the related_entities table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">relation</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: PUBLISHED_BY, HAS_AUTHOR, HAS_CONTRIBUTOR, POINT_OF_CONTACT, IMPLEMENTED_BY, CONSUMER_OF, HAS_ASSOCIATION_WITH, IS_PRESENTED_BY, IS_USED_BY, IS_DERIVED_FROM, ENRICHES, IS_PART_OF.</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>vocabulary_id</li>
+<li>(vocabulary_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-vocabulary_related_vocabularies">Table: vocabulary_related_vocabularies</h2>
+<p>This table is for representing related vocabularies, where the related vocabularies are also stored in the database. For related vocabularies that are external, use related_entities with type=“VOCABULARY”.</p>
+<table>
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 9%" />
+<col style="width: 16%" />
+<col style="width: 38%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references vocabulary_ids(id)</td>
+<td style="text-align: left;">There must be an entry in the vocabularies table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">related_vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references vocabulary_ids(id)</td>
+<td style="text-align: left;">There must be an entry in the vocabularies table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">relation</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: HAS_ASSOCIATION_WITH, IS_DERIVED_FROM, ENRICHES, IS_PART_OF</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>vocabulary_id</li>
+<li>(vocabulary_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-tasks">Table: tasks</h2>
+<p>(NB 1: In the current database, this table is called <code>task</code>.) (NB 2: The description below formerly included a “modified_by” column, but it has not (yet) been implemented, so it was removed.)</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 10%" />
+<col style="width: 35%" />
+<col style="width: 32%" />
+<col style="width: 9%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">vocabulary_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references access_point_ids(id)</td>
+<td style="text-align: left;">The vocabulary id</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">version_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references version_ids(id)</td>
+<td style="text-align: left;">The version id</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">params</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">status</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type: SUCCESS, ERROR, EXCEPTION</td>
+<td style="text-align: left;">SUCCESS</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">response</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+</ul>
+<h2 id="table-poolparty_servers">Table: poolparty_servers</h2>
+<p>If there ends up being more than one server supported, add some way of indicating “active” rows. This could be by adding an “active” Boolean column, or by making this a “temporal” table with start_date/end_date values and adding an associated poolparty_servers_ids table.</p>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 10%" />
+<col style="width: 13%" />
+<col style="width: 39%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">api_url</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The URL of the top of the API. API call selectors are appended to this value.</td>
+<td style="text-align: left;">http://ands.poolparty.biz/PoolParty/</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">username</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The username to use to connect to the API</td>
+<td style="text-align: left;">ANDS_Toolkit</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">password</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The password to use to connect to the API</td>
+<td style="text-align: left;">aPassword</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+</ul>
+<p>Populate this table as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">insert</span> <span class="kw">into</span> poolparty_servers(<span class="kw">id</span>,api_url,username,<span class="kw">password</span>)</a>
+<a class="sourceLine" id="cb1-2" title="2">  <span class="kw">values</span> (<span class="dv">1</span>,<span class="ot">&quot;hostname&quot;</span>,<span class="ot">&quot;username&quot;</span>,<span class="ot">&quot;password&quot;</span>);</a>
+<a class="sourceLine" id="cb1-3" title="3"><span class="co">-- For example (&quot;pw&quot; is not the real password!):</span></a>
+<a class="sourceLine" id="cb1-4" title="4"><span class="co">-- insert into poolparty_servers(id,api_url,username,password) values</span></a>
+<a class="sourceLine" id="cb1-5" title="5"><span class="co">--   (1,&quot;https://editor.vocabs.ands.org.au/PoolParty/&quot;,&quot;ANDS_Toolkit&quot;,&quot;pw&quot;);</span></a></code></pre></div>
+<h2 id="table-registry_events">Table: registry_events</h2>
+<p>See the page <a href="Vocabulary_Registry_events">Vocabulary Registry events</a> for the definitive list of all possible types of Registry event.</p>
+<p>List of events in the lifecycle of a registry element (i.e., a vocabulary, or a version, or …). Used for generating feeds (RSS, etc.). The element_type values are taken from an enumerated type defined in the registry schema (<code>common-types.xsd</code>), based on tables names (i.e., in the plural form). The difficulty: since we have (so far) gone with element_type/element_id, how do we then conveniently get (say) a list of all events for a vocabulary, i.e., that include the events for all versions of that vocabulary? This could be done with a VIEW that does the necessary joins. But how expensive would that be?</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 10%" />
+<col style="width: 12%" />
+<col style="width: 43%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">element_type</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type (registry schema <code>registry-event-element-type</code>): the type of registry element. Let’s say for now that we support temporal elements only (i.e., with start_date/end_date values and corresponding _ids tables). That means VOCABULARIES, VERSIONS, etc., but not TASKS.</td>
+<td style="text-align: left;">VOCABULARIES<br />
+VERSIONS<br />
+ACCESS_POINTS<br />
+RELATED_ENTITIES</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">element_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The “real” id of the registry element, in the corresponding table. So, if element_type=VOCABULARIES, this would be a value from the vocabularies.vocabulary_id column.</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">event_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">event_type</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Enumerated type (registry schema <code>registry-event-event-type</code>), e.g., CREATED, DELETED, .… At present, the value is to be interpreted in terms of current instances <em>only</em>, i.e., not drafts. For example, if a vocabulary is “created” first as a draft, no registry event is recorded for that. If the draft is subsequently published, <em>that</em> is recorded as a registry event of event_type CREATED.</td>
+<td style="text-align: left;">CREATED</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">event_user</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the registry element.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">event_details</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">JSON to store everything else. A map of strings to objects, which are either strings or integers. See <a href="Vocabulary_Registry_events">Vocabulary Registry events</a> for the keys and values used for each type of event.</td>
+<td style="text-align: left;">{ }</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>(element_type, element_id)</li>
+</ul>
+<h2 id="table-subject_resolver_sources">Table: subject_resolver_sources</h2>
+<p>List of subject sources for which we do resolution of IRIs to label (and possibly notation). Note the relationship between the contents of this table, and the definition of the configuration setting $ENV[‘vocab_resolving_services’] in the portal’s <code>global_config.php</code> . The latter defines SISSVoc endpoints that wrap the corresponding SPARQL endpoints defined in this table. Note especially that the values of the keys in the portal definition must match (including case) the values of the source column of this table. (The portal definition includes a definition for local that does not specify anything for IRI resolution; correspondingly, this table does not have a row for that subject source.)</p>
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 9%" />
+<col style="width: 10%" />
+<col style="width: 35%" />
+<col style="width: 38%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">source</td>
+<td style="text-align: left;">varchar(10)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Subject source. These values are also used in the portal’s <code>global_config.php</code> as keys within the value of <code>$ENV['vocab_resolving_services']</code>.</td>
+<td style="text-align: left;"><ul>
+<li>anzsrc-for</li>
+<li>anzsrc-seo</li>
+<li>gcmd</li>
+</ul></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">iri</td>
+<td style="text-align: left;">varchar(1023)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">IRI of a SPARQL endpoint from which to fetch the details of the subjects.</td>
+<td style="text-align: left;"><ul>
+<li>http://localhost/repository/api/sparql/anzsrc-for</li>
+<li>http://vocabs.ands.org.au/repository/api/sparql/anzsrc-for</li>
+</ul></td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+</ul>
+<p>Populate this table as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">insert</span> <span class="kw">into</span> subject_resolver_sources(<span class="kw">source</span>,iri)</a>
+<a class="sourceLine" id="cb2-2" title="2">  <span class="kw">values</span> (<span class="st">&#39;anzsrc-for&#39;</span>, <span class="st">&#39;http://vocabs.ands.org.au/repository/api/sparql/anzsrc-for&#39;</span>);</a>
+<a class="sourceLine" id="cb2-3" title="3"><span class="kw">insert</span> <span class="kw">into</span> subject_resolver_sources(<span class="kw">source</span>,iri)</a>
+<a class="sourceLine" id="cb2-4" title="4">  <span class="kw">values</span> (<span class="st">&#39;anzsrc-seo&#39;</span>, <span class="st">&#39;http://vocabs.ands.org.au/repository/api/sparql/anzsrc-seo&#39;</span>);</a>
+<a class="sourceLine" id="cb2-5" title="5"><span class="kw">insert</span> <span class="kw">into</span> subject_resolver_sources(<span class="kw">source</span>,iri)</a>
+<a class="sourceLine" id="cb2-6" title="6">  <span class="kw">values</span> (<span class="st">&#39;gcmd&#39;</span>, <span class="st">&#39;http://vocabs.ands.org.au/repository/api/sparql/gcmd-sci&#39;</span>);</a></code></pre></div>
+<h2 id="table-subject_resolver">Table: subject_resolver</h2>
+<p>List of subjects that we can resolve from a source/IRI to a label, and possibly a notation.</p>
+<table>
+<colgroup>
+<col style="width: 6%" />
+<col style="width: 9%" />
+<col style="width: 10%" />
+<col style="width: 36%" />
+<col style="width: 36%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Type</th>
+<th>Extra</th>
+<th>Notes</th>
+<th>Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>id</td>
+<td>integer</td>
+<td>auto_increment</td>
+<td>Surrogate key</td>
+<td>2</td>
+</tr>
+<tr class="even">
+<td>source</td>
+<td>varchar(10)</td>
+<td></td>
+<td>Subject source</td>
+<td><ul>
+<li>anzsrc-for</li>
+<li>anzsrc-seo</li>
+<li>gcmd</li>
+</ul></td>
+</tr>
+<tr class="odd">
+<td>iri</td>
+<td>varchar(1023)</td>
+<td></td>
+<td>The subject’s IRI in the source vocabulary</td>
+<td>http://purl.org/au-research/vocabulary/anzsrc-for/2008/04</td>
+</tr>
+<tr class="even">
+<td>notation</td>
+<td>varchar(255)</td>
+<td></td>
+<td>The subject’s notation, if it has one, or an empty string, if it doesn’t</td>
+<td>04</td>
+</tr>
+<tr class="odd">
+<td>label</td>
+<td>text</td>
+<td></td>
+<td>The subject’s label: typically, this is the value of the skos:prefLabel property</td>
+<td>EARTH SCIENCES</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>(source, iri)</li>
+</ul>
+<h2 id="table-uploads">Table: uploads</h2>
+<p>File uploads.</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 14%" />
+<col style="width: 50%" />
+<col style="width: 10%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the vocabulary.</td>
+<td style="text-align: left;">rwalker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">owner</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Role ID taken from dbs_roles.roles(role_id); either an organisational role or an individual user</td>
+<td style="text-align: left;">ANDS</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">format</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The file format: RDF/XML, TTL, N-Triples, …</td>
+<td style="text-align: left;">TTL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">filename</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The filename of the file as provided at the time of the upload, but sanitized to eliminate certain characters and to enforce one extension. E.g., “abc 123.4.ttl” becomes “abc_123_4.ttl”.</td>
+<td style="text-align: left;">myfile.ttl</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+</ul>
+<h1 id="resource-iri-resolution-service">Resource IRI resolution service</h1>
+<p>See <a href="Vocabulary_resource_IRI_resolution_service">Vocabulary resource IRI resolution service</a> for further details about the database tables that support the resource IRI resolution service.</p>
+<h2 id="table-resource_owner_hosts">Table: resource_owner_hosts</h2>
+<p>NB: there can be multiple rows with the same owner, and there can be multiple rows with the same host.</p>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 14%" />
+<col style="width: 39%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">int</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">ID for this row of the table; surrogate key</td>
+<td style="text-align: left;">1, 2, …</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:46.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">owner</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Owner; should be a role name; usually, an organisational role</td>
+<td style="text-align: left;">AODN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">host</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Hostname “owned” by this owner</td>
+<td style="text-align: left;">vocab.aodn.org.au</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>id (primary key)</li>
+</ul>
+<h2 id="table-resource_map">Table: resource_map</h2>
+<p>This table is a map from IRIs to access points. The two columns that implement this map are <code>iri</code> and <code>access_point_id</code>. An instance of the map has three other attributes that qualify that instance:</p>
+<ul>
+<li>Whether or not the (user) role responsible for publishing the access point “owns” that IRI, based on the resource_owner_hosts table.</li>
+<li>The IRI of the RDF type that represents the resource’s type, <em>or</em> the special IRI corresponding to owl:deprecated, if the resource does not have a defined type at that access point.</li>
+<li>Whether or not the access point defines the resource as deprecated using the owl:deprecated property.</li>
+</ul>
+<p>The “owned” attribute means that it is possible to add to the map <em>all</em> of the resource IRIs used in a vocabulary, while allowing resolution to be implemented in such a way that prevents inadvertent (or deliberate) gazumping of the resolution of an IRI by someone other than the “owner” of an IRI publishing a vocabulary that uses that resource.</p>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 9%" />
+<col style="width: 14%" />
+<col style="width: 31%" />
+<col style="width: 31%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">ID for this row of the table; surrogate key</td>
+<td style="text-align: left;">1, 2, …</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">iri</td>
+<td style="text-align: left;">varchar(1023)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Resource to be mapped. There is an index on this field for quick <em>lookups</em>.</td>
+<td style="text-align: left;">http://vocab.aodn.org.au/def/organisation/entity/32</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">access_point_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references access_point_ids(id)</td>
+<td style="text-align: left;">Access point to use to resolve the resource. Must be an access point with type=“sissvoc”. There is an index on this field for quick <em>deletes</em>.</td>
+<td style="text-align: left;">45, 67, …</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">owned</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Is this resource owned by the owner of this vocabulary? All resources are included in the map; but for some resolution modes, only those that are “owned” will be resolved.</td>
+<td style="text-align: left;">TRUE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">resource_type</td>
+<td style="text-align: left;">varchar(1023)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The IRI of the resource type if available, or http://www.w3.org/2002/07/owl#deprecated if there is no known type, and this is a deprecated resource</td>
+<td style="text-align: left;">http://www.w3.org/2004/02/skos/core#Concept</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">deprecated</td>
+<td style="text-align: left;">boolean</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Is this a deprecated resource? True if there is a triple “iri owl:deprecated true”.</td>
+<td style="text-align: left;">FALSE</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>id (primary key)</li>
+<li>iri(191)</li>
+<li>access_point_id</li>
+</ul>
+<p>Note the key length for the ix_resource_map_iri index on the “iri” field: MySQL 5.6 requires a key length in this case. (In MySQL up to version 5.6, index fields are limited to 767 bytes. In utf8mb4 encoding, that means 191 characters.)</p>
+<h1 id="subscriptions-and-notifications">Subscriptions and notifications</h1>
+<p>The following classes represent subscribers, and subscriptions to notifications about registry events.</p>
+<p>Note that we have a subscribers table that has top-level data about a subscriber. For now, there is only notification by email. But we allow for future expansion of the notification types by putting email addresses in a separate table.</p>
+<h2 id="table-subscribers">Table: subscribers</h2>
+<p>This table is for representing top-level data about subscribers to notifications about registry events.</p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 10%" />
+<col style="width: 15%" />
+<col style="width: 41%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">subscriber_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references subscriber_ids(id)</td>
+<td style="text-align: left;">The “real” subscriber id</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the subscriber: indeed, since subscribers are not (currently) linked to user roles, this will probably be SYSTEM for now.</td>
+<td style="text-align: left;">SYSTEM</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">token</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The subscriber’s token, used to manage subscriptions. Because we are using pac4j for authentication, the token must be self-contained, i.e., contain everything needed to identify the subscriber. In practice, the subscriber_id must be included in the token value. In the example given, the subscriber_id is separated from the “password”-like component by an underscore.</td>
+<td style="text-align: left;">2_rf6FlQkBj</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes (this is a draft list: refine this!):</p>
+<ul>
+<li>id</li>
+<li>subscriber_id</li>
+<li>(subscriber_id, end_date)</li>
+<li>end_date</li>
+</ul>
+<h2 id="table-subscriber_email_addresses">Table: subscriber_email_addresses</h2>
+<p>This table is for representing the email addresses of subscribers to notifications about registry events.</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 9%" />
+<col style="width: 24%" />
+<col style="width: 27%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">subscriber_email_address_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references subscriber_email_address_ids(id)</td>
+<td style="text-align: left;">The “real” subscriber email address id</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">subscriber_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references subscriber_ids(id)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">email_address</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The subscriber’s email address</td>
+<td style="text-align: left;">rwalker@myhost.org</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>id (primary key)</li>
+<li>ix_subscriber_email_addresses_email_address_end_date: (email_address, end_date)</li>
+</ul>
+<h2 id="table-subscriptions">Table: subscriptions</h2>
+<p>This table is for representing subscriptions to notifications about registry events. Draft rows could represent “pending” subscriptions, e.g., needing confirmation from the user.</p>
+<table>
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 9%" />
+<col style="width: 15%" />
+<col style="width: 38%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment</td>
+<td style="text-align: left;">Surrogate key</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">start_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">2016-08-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">end_date</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone</td>
+<td style="text-align: left;">9999-12-01 00:00:00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">subscription_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references subscription_ids(id)</td>
+<td style="text-align: left;">The “real” subscription id</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">subscriber_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">foreign key references subscriber_ids(id)</td>
+<td style="text-align: left;">For notifications to be sent, there must be an entry in the appropriate table for the notification_mode. For notification_mode=EMAIL, that means that there must be an entry in the subscriber_email_addresses table which has start_date/end_date values consistent with the start_date/end_date values of this entry.</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">modified_by</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The user Role ID responsible for creating this row in the table. <em>Not</em> (necessarily) the role that owns the subscriber: indeed, since subscribers are not (currently) linked to user roles, this will probably be SYSTEM for now.</td>
+<td style="text-align: left;">SYSTEM</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">notification_mode</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The mode by which the notification is to be delivered. Enumerated type: EMAIL</td>
+<td style="text-align: left;">EMAIL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">notification_element_type</td>
+<td style="text-align: left;">varchar(45)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">The type of notification being subscribed to. Enumerated type: OWNER, VOCABULARY</td>
+<td style="text-align: left;">VOCABULARY</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">notification_element_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><p>The id of the element of the element type which is being subscribed to. If the element type does not distinguish instances, then the value 0 is used.</p>
+<ul>
+<li>If notification_element_type = SYSTEM, 0</li>
+<li>If notification_element_type = OWNER, an owner_id</li>
+<li>If notification_element_type = VOCABULARY, a vocabulary_id</li>
+</ul></td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">last_notification</td>
+<td style="text-align: left;">datetime</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Value is in the UTC timezone. The date/time of the last successful sending of a notification for this subscription.</td>
+<td style="text-align: left;">2018-03-15 13:50:47.123468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">data</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><p>JSON to store everything else. Future work could be to use this field to indicate notification-mode-specific configuration.</p>
+<p>For now:</p>
+<ul>
+<li>creator: the role that created this subscription. (Immediately after creation, this will be equal to the value of the modified_by column. But if this subscription is deleted, modified_by will be set to SYSTEM.)</li>
+</ul>
+<p>Future (?): For notification_mode = EMAIL:</p>
+<ul>
+<li>notification frequency (weekly, monthly)</li>
+</ul></td>
+<td style="text-align: left;">{}</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>id (primary key)</li>
+<li>ix_subscriptions_notification_mode_end_date: (notification_mode, end_date)</li>
+</ul>
+<h2 id="table-owners">Table: owners</h2>
+<p>This table is a helper table for use with the notification subsystem. Because the subscriptions.notification_element_id is an integer, and because one of the possible values of subscriptions.notification_element_type is OWNER, we need an integer for each owner. Future work could be to make this into one of the “main” tables, i.e., by adding a separate owner_ids table, and adding id, start_date, and end_date columns to the owners table.</p>
+<table>
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 12%" />
+<col style="width: 16%" />
+<col style="width: 50%" />
+<col style="width: 11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Column</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Extra</th>
+<th style="text-align: left;">Notes</th>
+<th style="text-align: left;">Example(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">owner_id</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">auto_increment, primary key, index</td>
+<td style="text-align: left;">Owner id, which can be used as the value of subscriptions.notification_element_id, if notification_element_type is OWNER</td>
+<td style="text-align: left;">18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">owner</td>
+<td style="text-align: left;">varchar(255)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Role ID taken from dbs_roles.roles(role_id); either an organisational role or an individual user. There is a unique constraint on this column. (The constraint is implied by the addition of an index on this column.)</td>
+<td style="text-align: left;">ANDS</td>
+</tr>
+</tbody>
+</table>
+<p>Indexes:</p>
+<ul>
+<li>owner_id (primary key)</li>
+<li>ix_owners_owner: (owner)</li>
+</ul>
+<h1 id="integrity-constraints">Integrity constraints</h1>
+<p>This section specifies database integrity constraints not otherwise specified in the previous section.</p>
+<ul>
+<li>Need to pay attention to the entries in the previous section of the form “There must be an entry in the xyz table which has start_date/end_date values consistent with the start_date/end_date values of this entry”. These can be implemented in a number of ways:
+<ul>
+<li>As database triggers on insert/update. The coding of triggers tends to be database-specific.</li>
+<li>As JPA entity listeners. This is underway. See the VersionListener class for an example.</li>
+</ul></li>
+<li>It turns out that putting constraints at the level of the DDL (i.e., table and index creation SQL commands) is problematic because JPA can re-order statements within a transaction. See, e.g., <a href="https://vladmihalcea.com/hibernate-facts-knowing-flush-operations-order-matters/" class="uri">https://vladmihalcea.com/hibernate-facts-knowing-flush-operations-order-matters/</a> for an explanation. If we end up doing this sort of thing, we will need to put calls to <code>em.flush()</code> in various places. See, e.g., the comments and commented-out changesets for triggers in <code>src/main/db/changelog/registry-0001.xml</code>, and the comments for the changeset <code>0002-vocabularies_vocabulary_id_end_date-createIndex</code> in <code>src/main/db/changelog/registry-0002.xml</code>.</li>
+</ul>
+</body>
+</html>
